@@ -1,0 +1,97 @@
+-- ===========================================
+-- TABELA USUÁRIO (Custom AbstractUser)
+-- ===========================================
+
+CREATE TABLE usuario (
+    id SERIAL PRIMARY KEY,
+    
+    -- Campos do AbstractUser
+    password VARCHAR(128) NOT NULL,
+    last_login TIMESTAMP WITH TIME ZONE,
+    is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
+    username VARCHAR(150) NOT NULL UNIQUE,
+    first_name VARCHAR(150) NOT NULL,
+    last_name VARCHAR(150) NOT NULL,
+    email VARCHAR(254) UNIQUE,
+    is_staff BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    date_joined TIMESTAMP WITH TIME ZONE NOT NULL,
+    
+    -- Campos adicionados
+    empresa VARCHAR(255),
+    data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT unique_usuario_email UNIQUE (email)
+);
+
+-- Many-to-Many com GROUPS
+CREATE TABLE usuario_groups (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+    group_id INTEGER NOT NULL REFERENCES auth_group(id) ON DELETE CASCADE
+);
+
+-- Many-to-Many com PERMISSIONS
+CREATE TABLE usuario_user_permissions (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+    permission_id INTEGER NOT NULL REFERENCES auth_permission(id) ON DELETE CASCADE
+);
+
+
+-- ===========================================
+-- TABELA PRODUTO
+-- ===========================================
+
+CREATE TABLE produto (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    quantidade INTEGER NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+    estoque_minimo INTEGER NOT NULL DEFAULT 0 CHECK (estoque_minimo >= 0),
+    preco NUMERIC(10,2),
+    status_estoque VARCHAR(20) NOT NULL DEFAULT 'disponivel',
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_por_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE PROTECT
+);
+
+-- Índices
+CREATE INDEX idx_produto_nome ON produto(nome);
+CREATE INDEX idx_produto_status ON produto(status_estoque);
+
+
+-- ===========================================
+-- TABELA MOVIMENTAÇÃO DE ESTOQUE
+-- ===========================================
+
+CREATE TABLE movimentacaoestoque (
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produto(id) ON DELETE PROTECT,
+    tipo_movimentacao VARCHAR(10) NOT NULL,
+    quantidade INTEGER NOT NULL CHECK (quantidade >= 1),
+    data_movimentacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    observacao TEXT,
+    usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE PROTECT
+);
+
+-- Ordenações são lógicas no Django, não viram SQL.
+
+
+-- ===========================================
+-- TABELA ALERTAS DE ESTOQUE
+-- ===========================================
+
+CREATE TABLE alertaestoque (
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL REFERENCES produto(id) ON DELETE CASCADE,
+    tipo_alerta VARCHAR(10) NOT NULL,
+    mensagem TEXT NOT NULL,
+    lido BOOLEAN NOT NULL DEFAULT FALSE,
+    data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices padrões (ordenado por data)
+CREATE INDEX idx_alertaestoque_data ON alertaestoque(data_criacao DESC);
